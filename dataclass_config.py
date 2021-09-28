@@ -4,6 +4,7 @@ import argparse
 from itertools import chain
 from collections import abc, defaultdict
 from functools import singledispatch
+import copy
 
 
 T = TypeVar('T')
@@ -96,9 +97,9 @@ class Config:
     def __init__(self, config=None):
         if config is not None:
             if isinstance(config, Config):
-                self.configs = config.configs
+                self.configs = config.configs.copy()
             else:
-                self.configs = config
+                self.configs = config.copy()
         else:
             self.configs = dotdict()
         self.parser = None
