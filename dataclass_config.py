@@ -4,7 +4,6 @@ import argparse
 from itertools import chain
 from collections import abc, defaultdict
 from functools import singledispatch
-import copy
 
 
 T = TypeVar('T')
@@ -59,6 +58,11 @@ def _check_required_map(obj: abc.Mapping, loc):
 
 
 @_check_required.register
+def _check_required_str(obj: str, loc):
+    return False, loc
+
+
+@_check_required.register
 def _check_required_seq(obj: abc.Sequence, loc):
     for value in obj:
         is_required, loc = _check_required(value, loc)
@@ -95,7 +99,10 @@ class dotdict(dict):
 class Config:
     def __init__(self, config=None):
         if config is not None:
-            self.configs = config.configs
+            if isinstance(config, Config):
+                self.configs = config.configs
+            else:
+                self.configs = config
         else:
             self.configs = dotdict()
         self.parser = None
@@ -119,17 +126,25 @@ class Config:
         return _dataclass
 
     def __getattr__(self, name):
-        if name in self.configs:
-            return self.configs[name]
+        return self[name]
+
+    def __getitem__(self, name):
+        return self.configs[name]
 
     def __call__(self, name):
         return self.add(name)
+
+    def __iter__(self):
+        yield from self.configs.items()
 
     def asdict(self):
         dict = dotdict()
         for name, config in self.configs.items():
             dict[name] = asdict(config, dict_factory=dotdict)
         return dict
+
+    def __str__(self):
+        return str(self.configs)
 
     def parse_args(self):
         loc = defaultdict(default_factory={})
@@ -180,4 +195,9 @@ class Config:
         if self.parser:
             for key, value in vars(self.parser.parse_known_args()[0]).items():
                 config[loc[key]][key] = value
-        return config
+        return Config(config)
+
+
+@_check_required.register
+def _check_required_config(obj: Config, loc):
+    return _check_required(obj.asdict(), loc)
