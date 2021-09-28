@@ -81,14 +81,9 @@ class Argument(Generic[T]):
     default: Union[T, Required] = Required()
     additional_flags: List[str] = field(default_factory=list)
     help: str = ''
+    choices: List[T] = None
     metavar: Optional[str] = None
     action: argparse.Action = None
-
-
-@dataclass(frozen=True)
-class Choice(Generic[T]):
-    choices: List[T]
-    default: Union[T, Required] = Required()
 
 
 class dotdict(dict):
@@ -159,7 +154,8 @@ class Config:
                 if self.parser is None:
                     self.parser = argparse.ArgumentParser()
                 type, origins = get_origins_and_arg(f.type)
-                kwargs = {'help': value.help}
+                kwargs = {'help': value.help, 'default': value.default}
+
                 if type is bool:
                     if isinstance(value.default, Required):
                         raise ValueError('Type bool can not be required!')
@@ -171,19 +167,12 @@ class Config:
                     kwargs['type'] = type
                     kwargs['metavar'] = value.metavar
                     kwargs['action'] = value.action
+                    if value.choices is not None:
+                        kwargs['choices'] = value.choices
 
                 # Check required
-                if (isinstance(value.default, Required) or
-                        (isinstance(value.default, Choice) and
-                            isinstance(value.default.default, Required))):
+                if isinstance(value.default, Required):
                     kwargs['required'] = True
-
-                # Choices
-                if isinstance(value.default, Choice):
-                    kwargs['default'] = value.default.default
-                    kwargs['choices'] = value.default.choices
-                else:
-                    kwargs['default'] = value.default
 
                 # List
                 if origins and origins[-1] is list:
