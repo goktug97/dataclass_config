@@ -67,8 +67,8 @@ def _check_required_seq(obj: abc.Sequence, loc):
     for value in obj:
         is_required, loc = _check_required(value, loc)
         if is_required:
-            break
-    return is_required, loc
+            return True, loc
+    return False, loc
 
 
 @_check_required.register
