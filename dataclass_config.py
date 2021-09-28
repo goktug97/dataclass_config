@@ -4,6 +4,7 @@ import argparse
 from itertools import chain
 from collections import abc, defaultdict
 from functools import singledispatch
+import copy
 
 
 T = TypeVar('T')
@@ -99,7 +100,7 @@ class Config:
             self.configs = dotdict()
         self.parser = None
 
-    def __getattr__(self, name):
+    def add(self, name):
         if name in self.configs:
             def _dataclass(cls):
                 cls_dataclass = dataclass(cls)
@@ -116,6 +117,13 @@ class Config:
                 self.configs[name] = cls_dataclass()
                 return cls_dataclass
         return _dataclass
+
+    def __getattr__(self, name):
+        if name in self.configs:
+            return self.configs[name]
+
+    def __call__(self, name):
+        return self.add(name)
 
     def asdict(self):
         dict = dotdict()
