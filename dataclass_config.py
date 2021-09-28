@@ -1,10 +1,11 @@
-from dataclasses import dataclass, fields, asdict, make_dataclass, field
-from typing import TypeVar, Generic, Union, List, get_origin, get_args, Optional
+from dataclasses import dataclass, is_dataclass, make_dataclass
+from dataclasses import fields, asdict, field
+from typing import Union, List, Optional, Generic, TypeVar
+from typing import get_origin, get_args
 import argparse
 from itertools import chain
 from collections import abc, defaultdict
 from functools import singledispatch
-import copy
 
 
 T = TypeVar('T')
@@ -82,9 +83,9 @@ class Argument(Generic[T]):
     default: Union[T, Required] = Required()
     additional_flags: List[str] = field(default_factory=list)
     help: str = ''
-    choices: List[T] = None
+    choices: Optional[List[T]] = None
     metavar: Optional[str] = None
-    action: argparse.Action = None
+    action: Optional[argparse.Action] = None
 
 
 class dotdict(dict):
@@ -137,7 +138,10 @@ class Config:
     def asdict(self):
         dict = dotdict()
         for name, config in self.configs.items():
-            dict[name] = asdict(config, dict_factory=dotdict)
+            if is_dataclass(config):
+                dict[name] = asdict(config, dict_factory=dotdict)
+            else:
+                dict[name] = dotdict(config)
         return dict
 
     def __str__(self):
