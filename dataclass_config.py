@@ -82,6 +82,7 @@ class Argument(Generic[T]):
     additional_flags: List[str] = field(default_factory=list)
     help: str = ''
     metavar: Optional[str] = None
+    action: argparse.Action = None
 
 
 @dataclass(frozen=True)
@@ -169,6 +170,7 @@ class Config:
                 else:
                     kwargs['type'] = type
                     kwargs['metavar'] = value.metavar
+                    kwargs['action'] = value.action
 
                 # Check required
                 if (isinstance(value.default, Required) or
