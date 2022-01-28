@@ -6,9 +6,10 @@ import argparse
 from itertools import chain
 from collections import abc, defaultdict
 from functools import singledispatch
+import copy
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def get_origins_and_arg(tp):
@@ -22,6 +23,7 @@ def get_origins_and_arg(tp):
                 origins.append(origin)
             tp, _ = _get_args(args[0])
         return tp, origins
+
     return _get_args(tp)
 
 
@@ -82,7 +84,7 @@ def _check_required_req(obj: Required, loc):
 class Argument(Generic[T]):
     default: Union[T, Required] = Required()
     additional_flags: List[str] = field(default_factory=list)
-    help: str = ''
+    help: str = ""
     choices: Optional[List[T]] = None
     metavar: Optional[str] = None
     action: Optional[argparse.Action] = None
@@ -92,6 +94,12 @@ class dotdict(dict):
     __getattr__ = dict.get
     __setattr__ = dict.__setitem__  # type: ignore
     __delattr__ = dict.__delitem__  # type: ignore
+
+    def __getstate__(self):
+        return copy.deepcopy(dict(self))
+
+    def __setstate__(self, a):
+        self.__dict__.update(a)
 
 
 class Config:
@@ -107,6 +115,7 @@ class Config:
 
     def add(self, name):
         if name in self.configs:
+
             def _dataclass(cls):
                 cls_dataclass = dataclass(cls)
                 data = cls_dataclass()
@@ -116,11 +125,14 @@ class Config:
                 new_dataclass = make_dataclass(cls.__name__, dict.values())
                 self.configs[name] = new_dataclass()
                 return new_dataclass
+
         else:
+
             def _dataclass(cls):
                 cls_dataclass = dataclass(cls)
                 self.configs[name] = cls_dataclass()
                 return cls_dataclass
+
         return _dataclass
 
     def __getattr__(self, name):
@@ -159,32 +171,33 @@ class Config:
                 if self.parser is None:
                     self.parser = argparse.ArgumentParser()
                 type, origins = get_origins_and_arg(f.type)
-                kwargs = {'help': value.help, 'default': value.default}
+                kwargs = {"help": value.help, "default": value.default}
 
                 if type is bool:
                     if isinstance(value.default, Required):
-                        raise ValueError('Type bool can not be required!')
+                        raise ValueError("Type bool can not be required!")
                     # Register bool argument as an action
-                    kwargs['action'] = f'store_{str(not bool(value.default)).lower()}'
-                    kwargs['dest'] = f.name
+                    kwargs["action"] = f"store_{str(not bool(value.default)).lower()}"
+                    kwargs["dest"] = f.name
                     self.parser.set_defaults(**{f.name: bool(value.default)})
                 else:
-                    kwargs['type'] = type
-                    kwargs['metavar'] = value.metavar
-                    kwargs['action'] = value.action
+                    kwargs["type"] = type
+                    kwargs["metavar"] = value.metavar
+                    kwargs["action"] = value.action
                     if value.choices is not None:
-                        kwargs['choices'] = value.choices
+                        kwargs["choices"] = value.choices
 
                 # Check required
                 if isinstance(value.default, Required):
-                    kwargs['required'] = True
+                    kwargs["required"] = True
 
                 # List
                 if origins and origins[-1] is list:
-                    kwargs['nargs'] = '+'
+                    kwargs["nargs"] = "+"
 
                 self.parser.add_argument(
-                    f'--{f.name}', *value.additional_flags, **kwargs)
+                    f"--{f.name}", *value.additional_flags, **kwargs
+                )
 
         # Parse arguments and update the config
         config = self.asdict()
